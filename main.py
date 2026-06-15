@@ -1,8 +1,23 @@
 import os
 import sys
+import io
 
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(line_buffering=True)
+# 解决 Windows 终端 GBK 编码无法打印 Unicode 字符（❤♡等）的问题
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace', line_buffering=True)
+except Exception:
+    try:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
+    except Exception:
+        pass
+
+try:
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    try:
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 
 import yaml
 
@@ -65,9 +80,9 @@ def main():
     print()
 
     if ranking_enabled:
-        ranking_crawler.run()
-
-    if tags:
+        ranking_crawler.run()  # 排行榜检索（完成后自动启动 Tag 检索）
+    elif tags:
+        # 仅 Tag 检索模式（排行榜未启用）
         tag_crawler.run()
 
     pending = pending_handler.show_and_process()

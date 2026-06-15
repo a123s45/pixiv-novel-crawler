@@ -62,11 +62,12 @@ pip install streamlit requests pyyaml
 ```yaml
 ai:
   provider: deepseek
-  api_key: "sk-your-deepseek-api-key"   # DeepSeek API Key（可选）
+  api_key: "sk-your-deepseek-api-key"   # API Key
+  api_base: "https://api.deepseek.com/v1"  # OpenAI 兼容 API 地址
   quality_check_threshold: 500           # 低于此收藏数启用严格质检
 
 auth:
-  cookie: "4380493_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # Pixiv PHPSESSID
+  cookie: "0000000_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # 替换为你的 PHPSESSID
 
 proxy: "http://127.0.0.1:7890/"          # 代理地址（Pixiv 被墙地区需要）
 

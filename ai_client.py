@@ -10,12 +10,20 @@ class AIClient:
         self.config = config
         self.provider = config.get("ai", {}).get("provider", "opencode")
 
+    def _api_base(self) -> str:
+        return self.config.get("ai", {}).get("api_base", "https://api.deepseek.com/v1")
+
+    def _api_key(self) -> str:
+        return (os.environ.get("DEEPSEEK_API_KEY")
+                or self.config.get("ai", {}).get("api_key", ""))
+
     def _deepseek_call(self, prompt: str, max_tokens: int = 1024, temperature: float = 0) -> str:
-        api_key = os.environ.get("DEEPSEEK_API_KEY") or self.config.get("ai", {}).get("api_key", "")
+        api_key = self._api_key()
         if not api_key:
             return ""
+        base = self._api_base()
         resp = requests.post(
-            "https://api.deepseek.com/v1/chat/completions",
+            f"{base}/chat/completions",
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
                 "model": "deepseek-chat",
@@ -28,29 +36,13 @@ class AIClient:
         return resp.json()["choices"][0]["message"]["content"].strip()
 
     def judge_series(self, prompt: str, chapters_info=None) -> str:
-        if self.provider == "deepseek":
-            return self._deepseek_judge(prompt)
-        return self._heuristic_judge(chapters_info)
-
-    def _heuristic_judge(self, chapters_info) -> str:
-        if not chapters_info or len(chapters_info) <= 1:
-            return "B"
-        titles = [c.title for c in chapters_info]
-        sequential_pattern = re.compile(r"第[一二三四五六七八九十百千万\d]+[話話章节回部話]")
-        has_sequential = any(sequential_pattern.search(t) for t in titles)
-        if has_sequential and len(chapters_info) <= 20:
-            return "A"
-        if len(chapters_info) >= 10:
-            return "A"
-        return "B"
-
-    def _deepseek_judge(self, prompt: str) -> str:
-        api_key = os.environ.get("DEEPSEEK_API_KEY") or self.config.get("ai", {}).get("api_key", "")
+        api_key = self._api_key()
         if not api_key:
-            return self._heuristic_judge([])
+            return self._heuristic_judge(chapters_info)
         try:
+            base = self._api_base()
             resp = requests.post(
-                "https://api.deepseek.com/v1/chat/completions",
+                f"{base}/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": "deepseek-chat",
@@ -64,6 +56,18 @@ class AIClient:
             return result if result in ("A", "B") else "B"
         except Exception:
             return self._heuristic_judge([])
+
+    def _heuristic_judge(self, chapters_info) -> str:
+        if not chapters_info or len(chapters_info) <= 1:
+            return "B"
+        titles = [c.title for c in chapters_info]
+        sequential_pattern = re.compile(r"第[一二三四五六七八九十百千万\d]+[話話章节回部話]")
+        has_sequential = any(sequential_pattern.search(t) for t in titles)
+        if has_sequential and len(chapters_info) <= 20:
+            return "A"
+        if len(chapters_info) >= 10:
+            return "A"
+        return "B"
 
     def evaluate_quality(self, prompt: str) -> dict:
         result = self._deepseek_call(prompt, max_tokens=512, temperature=0)

@@ -1,7 +1,18 @@
 ai:
-  provider: deepseek
   api_key: ""
+  api_base: "https://api.deepseek.com/v1"
+  provider: deepseek
   quality_check_threshold: 500
+  quality_eval_prompt: '你是一个Pixiv小说质量评估专家。评估以下小说：
+
+    标题：{title} Tag：{tags} 收藏数：{bookmark_count} 总字数：{word_count}
+
+    正文（开头1500字+结尾1500字）： {text_sample}
+
+    输出JSON（严格JSON格式，不要多余文字）： {{"is_completed": true/false/null, "has_advertisement":
+    true/false, "requires_payment": true/false, "tag_fraud": {{"exists": true/false,
+    "fraud_tags": [], "explanation": ""}}, "quality_score": 0-100, "summary": "一句话简介（20字内）",
+    "reason": "评估说明"}}'
   series_judge_prompt: '你是一个小说分类助手。判断以下 Pixiv 小说系列属于哪一类：
 
 
@@ -25,43 +36,27 @@ ai:
     仅回复 "A" 或 "B"，不要多余内容。
 
     '
-  quality_eval_prompt: '你是一个Pixiv小说质量评估专家。评估以下小说：
-
-    标题：{title}
-    Tag：{tags}
-    收藏数：{bookmark_count}
-    总字数：{word_count}
-
-    正文（开头1500字+结尾1500字）：
-    {text_sample}
-
-    输出JSON（严格JSON格式，不要多余文字）：
-    {{"is_completed": true/false/null, "has_advertisement": true/false, "requires_payment": true/false, "tag_fraud": {{"exists": true/false, "fraud_tags": [], "explanation": ""}}, "quality_score": 0-100, "summary": "一句话简介（20字内）", "reason": "评估说明"}}'
   translation_prompt: '你是专业小说翻译。将以下所有语言翻译成中文。
 
-    [人名对照表]
-    {glossary}
+    [人名对照表] {glossary}
 
-    要求：
-    1. 严格遵照人名对照表，不得改变
-    2. 保持原作者行文风格和语气
-    3. 中文流畅自然
+    要求： 1. 严格遵照人名对照表，不得改变 2. 保持原作者行文风格和语气 3. 中文流畅自然
     4. 专有名词首次出现可括号附注原文
 
-    原文：
-    {text}
+    原文： {text}
 
     翻译：'
+  async_mode: false
+archive:
+  output_dir: ./archive
 auth:
-  cookie: "YOUR_PHPSESSID_HERE"
+  cookie: ""
   user_agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 download:
   delay_seconds: 4
   encoding: utf-8
   output_dir: ./download
-proxy: http://127.0.0.1:7890/
-archive:
-  output_dir: ./archive
+proxy: ""
 ranking:
   bookmark_threshold: 600
   enabled: true

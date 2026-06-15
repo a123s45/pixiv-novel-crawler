@@ -27,7 +27,6 @@ class Evaluator:
                 words_checked=text_len,
             )
 
-        # 没有 API Key 时跳过 AI 质检，直接归档
         api_key = (self.ai.config.get("ai", {}).get("api_key", "")
                    or os.environ.get("DEEPSEEK_API_KEY", ""))
         if not api_key:
@@ -71,6 +70,9 @@ class Evaluator:
         r.quality_score = raw.get("quality_score", 50)
         r.summary = raw.get("summary", "")
 
+        has_external_links = raw.get("has_external_links", False)
+        ext_links_detail = raw.get("external_links_detail", [])
+
         tf = raw.get("tag_fraud", {})
         if isinstance(tf, dict):
             r.tag_fraud = tf.get("exists", False)
@@ -83,8 +85,14 @@ class Evaluator:
             detail = ", ".join(r.fraud_tags) if r.fraud_tags else "Tag与内容明显不符"
             r.reasons = [f"Tag欺诈: {detail}"]
 
+        if has_external_links and novel.bookmark_count < self.threshold * 2:
+            r.rejected = True
+            links_str = ", ".join(ext_links_detail[:3]) if ext_links_detail else "外站链接/聊天群"
+            r.reasons.append(f"含外站链接/聊天群({links_str})")
+
         if novel.bookmark_count < self.threshold:
-            flags = sum([r.has_advertisement, r.requires_payment, not r.is_completed])
+            flags = sum([r.has_advertisement, r.requires_payment, not r.is_completed,
+                         has_external_links])
             if r.quality_score < 50 or flags >= 2:
                 r.rejected = True
                 reasons = []
@@ -94,8 +102,11 @@ class Evaluator:
                     reasons.append("包含引流广告/推广")
                 if r.requires_payment:
                     reasons.append("需要付费平台解锁")
+                if has_external_links and "外站" not in str(r.reasons):
+                    links_str = ", ".join(ext_links_detail[:3]) if ext_links_detail else "是"
+                    reasons.append(f"含外站链接/聊天群({links_str})")
                 if not r.is_completed:
                     reasons.append("未完结")
-                r.reasons = reasons
+                r.reasons = reasons if reasons else r.reasons
 
         return r

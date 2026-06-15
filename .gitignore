@@ -2,6 +2,10 @@ config.yaml
 archive/
 download/
 translate_tmp/
+reasonix_tasks/
 __pycache__/
 *.pyc
 .streamlit/
+streamlit.*
+index.json
+SCAN_PROGRESS.md

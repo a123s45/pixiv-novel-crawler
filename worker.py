@@ -1,7 +1,19 @@
+import os
+import sys
+import io
 import threading
 import time
 from dataclasses import dataclass, field
 from typing import Optional
+
+# 解决 Windows 终端 GBK 编码问题
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace', line_buffering=True)
+except Exception:
+    try:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
+    except Exception:
+        pass
 
 from auth import PixivAuth
 from pixiv_api import PixivAPI

@@ -9,7 +9,8 @@ from series_judge import SeriesJudge
 
 
 class TagCrawler:
-    def __init__(self, api: PixivAPI, index: IndexManager, downloader: Downloader, judge: SeriesJudge, config: dict):
+    def __init__(self, api: PixivAPI, index: IndexManager, downloader: Downloader,
+                 judge: SeriesJudge, config: dict):
         self.api = api
         self.index = index
         self.downloader = downloader
@@ -33,6 +34,7 @@ class TagCrawler:
         total_downloaded = 0
 
         for tag in self.positive_tags:
+            print(f"\n  --- Tag: {tag} ---")
             total_downloaded += self._crawl_tag(tag)
 
         print(f"\nTag 检索完成，共下载 {total_downloaded} 篇")
@@ -72,11 +74,14 @@ class TagCrawler:
         return downloaded
 
     def _passes_filters(self, novel: PixivNovel) -> bool:
+        # 排除Tag（负面Tag）—— 最高优先级
         if self.negative_tags:
-            if any(nt in novel.tags for nt in self.negative_tags):
+            if any(nt.lower() == t.lower() for nt in self.negative_tags for t in novel.tags):
                 return False
+        # 收藏数下限
         if self.min_bookmarks > 0 and novel.bookmark_count < self.min_bookmarks:
             return False
+        # 字数范围
         if self.min_words > 0 and novel.word_count < self.min_words:
             return False
         if self.max_words > 0 and novel.word_count > self.max_words:
@@ -84,25 +89,28 @@ class TagCrawler:
         return True
 
     def _process_novel(self, novel: PixivNovel):
-        if self.reverse_tags and any(rt in novel.tags for rt in self.reverse_tags):
+        # 反向Tag处理：命中则加入待处理，不自动下载
+        if self.reverse_tags and any(rt.lower() == t.lower() for rt in self.reverse_tags for t in novel.tags):
+            matched = [rt for rt in self.reverse_tags if any(rt.lower() == t.lower() for t in novel.tags)]
             self.index.add_pending(PendingItem(
                 novel_id=novel.id,
                 title=novel.title,
-                matched_tags=[rt for rt in self.reverse_tags if rt in novel.tags],
+                matched_tags=matched,
                 url=novel.url,
                 source="tag_search",
             ))
-            print(f"  [待处理] {novel.title} (反向Tag: {novel.tags})")
+            print(f"    [待处理-反向Tag] {novel.title} (Tag: {', '.join(matched)})")
             return
 
+        # 正常下载
         self._download_with_series_check(novel)
 
     def _download_with_series_check(self, novel: PixivNovel):
         decision, chapter_ids, series_info = self.judge.judge(novel)
         if decision == "merge":
             path = self.downloader.download_series(novel, series_info, chapter_ids)
-            print(f"  [系列合并] {series_info.title} → {path}")
+            print(f"    [系列合并] {series_info.title} → {path}")
         else:
             path = self.downloader.download(novel)
             if path:
-                print(f"  [下载] {novel.title} → {path}")
+                print(f"    [下载] {novel.title} → {path}")
